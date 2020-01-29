@@ -82,17 +82,56 @@ end
 ## }}}
 
 import Base: length 
-function length(c)
+function length(c::ConfigString)
         #=
 	return number of strings
 	=#
 	return c.max
 end
-#function str(c)
-#         return @sprintf("%12i %2i ", c.lin_index, c.sign) + str(c.config)
-#end
 
 
+import Base: print 
+function print(c::ConfigString)
+	#= 
+	Pretty print of an determinant string
+	=#
+	#={{{=#
+	@printf("Index:%-12i NO:%4i Sign:%2i ",c.lin_index, c.no, c.sign)
+	print(c.config)
+	print('\n')
+end
+#=}}}=#
+
+function incr!(c::ConfigString)
+	#= 
+	Increment determinant string
+	=#
+#={{{=#
+	if c.lin_index == c.max-1
+		return
+        end
+        c.lin_index += 1
+        incr_comb!(c.config, c.no)
+end
+#=}}}=#
+
+
+function incr_comb!(comb::Array{Int,1}, Mend::Int)
+    #=
+    For a given combination, form the next combination
+    =#
+    N = length(comb)
+    for i in N:-1:1
+        if comb[i] < Mend - N + i 
+            comb[i] += 1
+            for j in i+1:N
+                comb[j]=comb[j-1]+1
+            end
+            return
+        end
+    end
+    return
+end
 
 end
 

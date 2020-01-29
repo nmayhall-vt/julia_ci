@@ -32,6 +32,8 @@ ehf = CIString.slater_det_energy(ecore, ints_1b, ints_2b, conf, conf)
 @printf(" HF Energy = %12.8f\n", ehf)
 
 ket_a = CIString.ConfigString(no=n_orbs, ne=n_elec_a)
-print(ket_a.max)
-print(ket_a.config)
-print('\n')
+CIString.print(ket_a)
+for i in 1:10
+    CIString.incr!(ket_a)
+    CIString.print(ket_a)
+end
