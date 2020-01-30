@@ -40,7 +40,7 @@ for i in 1:min(ket_a.max,10)
     CIString.calc_linear_index!(ket_b)
 end
 
-CIString.a!(ket_a,6)
+CIString.apply_annihilation!(ket_a,6)
 CIString.calc_max!(ket_a)
 CIString.calc_linear_index!(ket_a)
 CIString.print(ket_a)
@@ -49,13 +49,26 @@ CIString.print(ket_a)
 @assert(ket_a.max == 210)
 @assert(ket_a.lin_index == 10)
 
-CIString.c!(ket_a,5)
+CIString.apply_creation!(ket_a,5)
 CIString.calc_linear_index!(ket_a)
 CIString.calc_max!(ket_a)
 CIString.print(ket_a)
 @assert(ket_a.config == [1, 2, 3, 4, 5, 7, 8])
-@assert(ket_a.sign == 1)
+@assert(ket_a.sign == -1)
 @assert(ket_a.max == 120)
 @assert(ket_a.lin_index == 5)
 
-CIString.fill_ca_lookup!(ket_a)
+CIString.apply_creation!(ket_a,6)
+CIString.calc_linear_index!(ket_a)
+CIString.calc_max!(ket_a)
+CIString.print(ket_a)
+@assert(ket_a.config == [1, 2, 3, 4, 5, 6, 7, 8])
+@assert(ket_a.sign == 1)
+@assert(ket_a.max == 45)
+@assert(ket_a.lin_index == 1)
+
+lookup = CIString.fill_ca_lookup(ket_a)
+#for i in lookup
+#    print(i)
+#    print("\n")
+#end

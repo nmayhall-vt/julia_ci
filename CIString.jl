@@ -96,7 +96,7 @@ function print(c::ConfigString)
 	Pretty print of an determinant string
 	=#
 	#={{{=#
-        @printf("Index: %-10i NOrb: %-4i Dim: %-10i Sign: %2i ",c.lin_index, c.no, calc_nchk(c.no,c.ne), c.sign)
+        @printf("Index: %-10i NOrb: %-4i Dim: %-10i Sign: %2i ",c.lin_index, c.no, c.max, c.sign)
 	print(c.config)
 	print('\n')
 end
@@ -118,6 +118,13 @@ function incr!(c::ConfigString)
 end
 #=}}}=#
 
+function calc_max(c::ConfigString)
+    #=
+    Calculate dimension of space accessible to a ConfigString
+    =#
+    return calc_nchk(c.no,c.ne)
+end
+
 function calc_max!(c::ConfigString)
     #=
     Calculate dimension of space accessible to a ConfigString
@@ -131,7 +138,7 @@ function calc_nchk(n::Int,k::Int)
     Calculate n choose k
     =#
     #={{{=#
-    @assert(n>k)
+    @assert(n>=k)
     accum::BigInt = 1
     for i in 1:k
         accum = accum * (n-k+i) ÷ i
@@ -172,6 +179,8 @@ function calc_linear_index!(c::ConfigString)
         v = c.config[i]
         #todo: change mchn from function call to data lookup!
         for j in v_prev+1:v-1
+            #print(c)
+            #print(c.no-j, " ", c.ne-i,'\n')
             c.lin_index += calc_nchk(c.no-j,c.ne-i)
         end
         v_prev = v
@@ -181,7 +190,7 @@ end
 #=}}}=#
 
 
-function fill_ca_lookup!(c::ConfigString)
+function fill_ca_lookup(c::ConfigString)
     #=
     Create an index table relating each string with all ia substitutions
         i.e., ca_lookup[Ka][c(p) + a(p)*n_p] = La
@@ -191,18 +200,37 @@ function fill_ca_lookup!(c::ConfigString)
     ket = CIString.ConfigString(no=c.no, ne=c.ne)
     bra = CIString.ConfigString(no=c.no, ne=c.ne)
 
-    calc_max!(ket)
-    
-    for K in 1:ket.max
-        Kv = Array{Int,1}
+    max = calc_max(ket)
+   
+    tbl = []
+    for K in 1:max
+        Kv::Array{Int,1} = []
         for p in 1:ket.no
             for q in 1:ket.no
                 bra = deepcopy(ket)
-
+                apply_annihilation!(bra,p)
+                apply_creation!(bra,q)
+                @assert(issorted(bra.config))
+                #print("--\n")
+                #print(p,'\n')
+                #print(q,'\n')
+                #print(ket)
+                #print(bra)
+                if bra.sign == 0
+                    push!(Kv,0)
+                    continue
+                else
+                    #calc_max!(bra)
+                    #print(bra)
+                    calc_linear_index!(bra)
+                    push!(Kv,bra.sign * bra.lin_index)
+                end
             end
         end
+        push!(tbl,Kv)
         incr!(ket)
     end
+    return tbl 
 end
 #=}}}=#
 
@@ -213,30 +241,21 @@ function reset!(c::ConfigString)
     c.lin_index = 1
 end
 function destroy_config!(c::ConfigString)
-    c.config = Missing 
+    c.config = [] 
     c.sign = 0
     c.lin_index = 0
     c.max = 0
     c.ne = 0
-    c.no = 0
-end
-function destroy_config!(c::ConfigString)
-    c.config = Missing 
-    c.sign = 0
-    c.lin_index = 0
-    c.max = 0
-    c.ne = 0
-    c.no = 0
 end
 
 
-function a!(c::ConfigString, orb_index::Int)
+function apply_annihilation!(c::ConfigString, orb_index::Int)
     #=
     apply annihilation operator a_i to current string
     where orb_index is i
     =#
     #={{{=#
-    @assert(orb_index < c.no)
+    @assert(orb_index <= c.no)
     if c.sign == 0
         return
     end
@@ -269,39 +288,40 @@ end
 #=}}}=#
 
 
-function c!(c::ConfigString, orb_index::Int)
+function apply_creation!(c::ConfigString, orb_index::Int)
     #=
     apply creation operator a_i to current string
     where orb_index is i
     =#
     #={{{=#
-    @assert(orb_index < c.no)
+    @assert(orb_index <= c.no)
     if c.sign == 0
         return
     end
     
-    insert_here = -1
+    insert_here = 1
     for i in 1:c.ne
         if c.config[i] > orb_index
             insert_here = i
             break
         elseif c.config[i] == orb_index
-            destroy_conf!(c)
+            destroy_config!(c)
             return
         else
             insert_here += 1
         end
     end
-   
-    if insert_here % 2 != 0
+  
+    if insert_here % 2 != 1
         c.sign *= -1
     end
 
+    #print("insert_here ", insert_here, ' ', c.ne, "\n")
     insert!(c.config,insert_here,orb_index)
     
     c.ne += 1
     #unset data that need to be recomputed
-    c.max = nothing 
+    c.max = 0 
     c.lin_index = 0
 end
 #=}}}=#
