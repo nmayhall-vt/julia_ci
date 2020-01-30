@@ -82,12 +82,10 @@ end
 ## }}}
 
 import Base: length 
-function length(c::ConfigString)
-        #=
-	return number of strings
-	=#
-	return c.max
-end
+#=
+return number of strings
+=#
+length(c::ConfigString) = c.max
 
 
 import Base: print 
@@ -118,12 +116,10 @@ function incr!(c::ConfigString)
 end
 #=}}}=#
 
-function calc_max(c::ConfigString)
-    #=
-    Calculate dimension of space accessible to a ConfigString
-    =#
-    return calc_nchk(c.no,c.ne)
-end
+#=
+Calculate dimension of space accessible to a ConfigString
+=#
+calc_max(c::ConfigString) = calc_nchk(c.no,c.ne)
 
 function calc_max!(c::ConfigString)
     #=
