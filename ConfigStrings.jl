@@ -1,74 +1,13 @@
-module CIString
+module ConfigStrings
 using Printf
 using Parameters
 
-function slater_det_energy(h0,h1,h2,na::Int,nb::Int)
-	#Compute the energy of a Slater Det with na (nb) alpha (beta) electrons
-#={{{=#
-	E0 = h0 
-	E1 = 0
-	E2 = 0
-	for i=1:na
-		E1 += h1[i,i]
-		for j=i:na
-			E2 += h2[i,i,j,j]
-			E2 -= h2[i,j,j,i]
-		end
-		for j=1:nb
-			E2 += h2[i,i,j,j]
-		end
-	end
-	for i=1:nb
-		E1 += h1[i,i]
-		for j=i:nb
-			E2 += h2[i,i,j,j]
-			E2 -= h2[i,j,j,i]
-		end
-	end
-	return E0+E1+E2
-end
-#=}}}=#
+import Base: length, print 
 
-function slater_det_energy(h0,h1,h2,na::Array{Int,1},nb::Array{Int,1})
-	#Compute the energy of a Slater Det specified by 
-	# alpha (beta) string, na (nb)
-	#={{{=#
-	E0 = h0 
-	E1 = 0
-	E2 = 0
-	
-	@assert(length(Set(na))==length(na))
-	@assert(length(Set(nb))==length(nb))
-	
-	for ii=1:length(na)
-		i = na[ii]
-		E1 += h1[i,i]
-		for jj=ii:length(na)
-			j = na[jj]
-			E2 += h2[i,i,j,j]
-			E2 -= h2[i,j,j,i]
-		end
-		for jj=1:length(nb)
-			j = nb[jj]
-			E2 += h2[i,i,j,j]
-		end
-	end
-	for ii=1:length(nb)
-		i = nb[ii]
-		E1 += h1[i,i]
-		for jj=i:length(nb)
-			j = nb[jj]
-			E2 += h2[i,i,j,j]
-			E2 -= h2[i,j,j,i]
-		end
-	end
-	return E0+E1+E2
-end
-#=}}}=#
 
 @with_kw mutable struct ConfigString
     #=
-    Type to organize all the configuration string 
+    Type to organize all the configuration ConfigString 
     =#
 # {{{
 	no::Int = 0
@@ -81,17 +20,21 @@ end
 end
 ## }}}
 
-import Base: length 
-#=
-return number of strings
-=#
-length(c::ConfigString) = c.max
 
 
-import Base: print 
+function length(c::ConfigString) 
+    #=
+    return number of ConfigStrings
+    =#
+    #={{{=#
+    return c.max
+end
+#=}}}=#
+
+
 function print(c::ConfigString)
 	#= 
-	Pretty print of an determinant string
+	Pretty print of an determinant ConfigString
 	=#
 	#={{{=#
         @printf("Index: %-10i NOrb: %-4i Dim: %-10i Sign: %2i ",c.lin_index, c.no, c.max, c.sign)
@@ -100,9 +43,10 @@ function print(c::ConfigString)
 end
 #=}}}=#
 
+
 function incr!(c::ConfigString)
 	#= 
-	Increment determinant string
+	Increment determinant ConfigString
 	=#
 #={{{=#
     if c.max == nothing
@@ -116,17 +60,25 @@ function incr!(c::ConfigString)
 end
 #=}}}=#
 
-#=
-Calculate dimension of space accessible to a ConfigString
-=#
-calc_max(c::ConfigString) = calc_nchk(c.no,c.ne)
+
+function calc_max(c::ConfigString) 
+    #=
+    Calculate dimension of space accessible to a ConfigString
+    =#
+#={{{=#
+    return calc_nchk(c.no,c.ne)
+end
+#=}}}=#
+
 
 function calc_max!(c::ConfigString)
     #=
     Calculate dimension of space accessible to a ConfigString
     =#
+    #={{{=#
     c.max = calc_nchk(c.no,c.ne)
 end
+#=}}}=#
 
 
 function calc_nchk(n::Int,k::Int)
@@ -142,6 +94,7 @@ function calc_nchk(n::Int,k::Int)
     return accum
 end
 #=}}}=#
+
 
 function incr_comb!(comb::Array{Int,1}, Mend::Int)
     #=
@@ -165,7 +118,7 @@ end
 
 function calc_linear_index!(c::ConfigString)
     #=
-    Return linear index for lexically ordered __config string
+    Return linear index for lexically ordered __config ConfigString
     =#
 #={{{=#
     c.lin_index = 1
@@ -188,13 +141,13 @@ end
 
 function fill_ca_lookup(c::ConfigString)
     #=
-    Create an index table relating each string with all ia substitutions
+    Create an index table relating each ConfigString with all ia substitutions
         i.e., ca_lookup[Ka][c(p) + a(p)*n_p] = La
     =#
 #={{{=#
 
-    ket = CIString.ConfigString(no=c.no, ne=c.ne)
-    bra = CIString.ConfigString(no=c.no, ne=c.ne)
+    ket = ConfigString(no=c.no, ne=c.ne)
+    bra = ConfigString(no=c.no, ne=c.ne)
 
     max = calc_max(ket)
    
@@ -232,22 +185,28 @@ end
 
 
 function reset!(c::ConfigString)
+    #={{{=#
     c.config = Vector(1:ne)
     c.sign = 1
     c.lin_index = 1
 end
+#=}}}=#
+
+
 function destroy_config!(c::ConfigString)
+#={{{=#
     c.config = [] 
     c.sign = 0
     c.lin_index = 0
     c.max = 0
     c.ne = 0
 end
+#=}}}=#
 
 
 function apply_annihilation!(c::ConfigString, orb_index::Int)
     #=
-    apply annihilation operator a_i to current string
+    apply annihilation operator a_i to current ConfigString
     where orb_index is i
     =#
     #={{{=#
@@ -286,7 +245,7 @@ end
 
 function apply_creation!(c::ConfigString, orb_index::Int)
     #=
-    apply creation operator a_i to current string
+    apply creation operator a_i to current ConfigString
     where orb_index is i
     =#
     #={{{=#
@@ -319,6 +278,44 @@ function apply_creation!(c::ConfigString, orb_index::Int)
     #unset data that need to be recomputed
     c.max = 0 
     c.lin_index = 0
+end
+#=}}}=#
+
+
+function slater_det_energy(h0, h1, h2, deta::ConfigString, detb::ConfigString)
+	#Compute the energy of a Slater Det specified by 
+	#   deta is alpha determinant
+	#   detb is beta  determinant
+        #={{{=#
+	E0 = h0 
+	E1 = 0
+	E2 = 0
+
+        na = deta.config
+        nb = detb.config
+	for ii=1:deta.ne
+		i = na[ii]
+		E1 += h1[i,i]
+		for jj=ii:deta.ne
+			j = na[jj]
+			E2 += h2[i,i,j,j]
+			E2 -= h2[i,j,j,i]
+		end
+		for jj=1:detb.ne
+			j = nb[jj]
+			E2 += h2[i,i,j,j]
+		end
+	end
+	for ii=1:detb.ne
+		i = nb[ii]
+		E1 += h1[i,i]
+		for jj=i:detb.ne
+			j = nb[jj]
+			E2 += h2[i,i,j,j]
+			E2 -= h2[i,j,j,i]
+		end
+	end
+	return E0+E1+E2
 end
 #=}}}=#
 
