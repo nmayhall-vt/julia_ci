@@ -33,7 +33,29 @@ ehf = CIString.slater_det_energy(ecore, ints_1b, ints_2b, conf, conf)
 
 ket_a = CIString.ConfigString(no=n_orbs, ne=n_elec_a)
 CIString.print(ket_a)
-for i in 1:10
+CIString.calc_max!(ket_a)
+for i in 1:min(ket_a.max,10)
     CIString.incr!(ket_a)
-    CIString.print(ket_a)
+    ket_b = deepcopy(ket_a)
+    CIString.calc_linear_index!(ket_b)
 end
+
+CIString.a!(ket_a,6)
+CIString.calc_max!(ket_a)
+CIString.calc_linear_index!(ket_a)
+CIString.print(ket_a)
+@assert(ket_a.config == [1, 2, 3, 4, 7, 8])
+@assert(ket_a.sign == -1)
+@assert(ket_a.max == 210)
+@assert(ket_a.lin_index == 10)
+
+CIString.c!(ket_a,5)
+CIString.calc_linear_index!(ket_a)
+CIString.calc_max!(ket_a)
+CIString.print(ket_a)
+@assert(ket_a.config == [1, 2, 3, 4, 5, 7, 8])
+@assert(ket_a.sign == 1)
+@assert(ket_a.max == 120)
+@assert(ket_a.lin_index == 5)
+
+CIString.fill_ca_lookup!(ket_a)
