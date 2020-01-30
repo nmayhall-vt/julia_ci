@@ -216,7 +216,7 @@ function destroy_config!(c::ConfigString)
     c.config = Missing 
     c.sign = 0
     c.lin_index = 0
-    c.max = Missing 
+    c.max = 0
     c.ne = 0
     c.no = 0
 end
@@ -301,7 +301,7 @@ function c!(c::ConfigString, orb_index::Int)
     
     c.ne += 1
     #unset data that need to be recomputed
-    c.max = 0
+    c.max = nothing 
     c.lin_index = 0
 end
 #=}}}=#
