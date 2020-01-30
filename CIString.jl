@@ -216,7 +216,7 @@ function destroy_config!(c::ConfigString)
     c.config = Missing 
     c.sign = 0
     c.lin_index = 0
-    c.max = 0
+    c.max = Missing 
     c.ne = 0
     c.no = 0
 end
