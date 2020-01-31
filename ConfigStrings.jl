@@ -1,7 +1,9 @@
+push!(LOAD_PATH, "./")
 module ConfigStrings
 using Printf
 using Parameters
 
+import Tools
 import Base: length, print 
 
 
@@ -16,7 +18,7 @@ import Base: length, print
 	lin_index::Int = 1
 	config::Array{Int,1} = Vector(1:ne)
 	#ca_lookup::Array{Array{Int,1},1}
-        max::Int = calc_nchk(no,ne) 
+        max::Int = Tools.calc_nchk(no,ne) 
 end
 ## }}}
 
@@ -66,7 +68,7 @@ function calc_max(c::ConfigString)
     Calculate dimension of space accessible to a ConfigString
     =#
 #={{{=#
-    return calc_nchk(c.no,c.ne)
+    return Tools.calc_nchk(c.no,c.ne)
 end
 #=}}}=#
 
@@ -76,22 +78,7 @@ function calc_max!(c::ConfigString)
     Calculate dimension of space accessible to a ConfigString
     =#
     #={{{=#
-    c.max = calc_nchk(c.no,c.ne)
-end
-#=}}}=#
-
-
-function calc_nchk(n::Int,k::Int)
-    #= 
-    Calculate n choose k
-    =#
-    #={{{=#
-    @assert(n>=k)
-    accum::BigInt = 1
-    for i in 1:k
-        accum = accum * (n-k+i) ÷ i
-    end
-    return accum
+    c.max = Tools.calc_nchk(c.no,c.ne)
 end
 #=}}}=#
 
@@ -130,7 +117,7 @@ function calc_linear_index!(c::ConfigString)
         for j in v_prev+1:v-1
             #print(c)
             #print(c.no-j, " ", c.ne-i,'\n')
-            c.lin_index += calc_nchk(c.no-j,c.ne-i)
+            c.lin_index += Tools.calc_nchk(c.no-j,c.ne-i)
         end
         v_prev = v
     end
