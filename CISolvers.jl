@@ -41,8 +41,8 @@ end
     =#
 # {{{
 	h0::Real 
-        h1::Array{Real,2}  
-        h2::Array{Real,4}  
+        h1::Array{Float64,2}  
+        h2::Array{Float64,4}  
 	no::Int = 0
 	na::Int = 0  # number of alpha
 	nb::Int = 0  # number of beta
@@ -58,9 +58,10 @@ end
 end
 ## }}}
 
-function compute_ab_terms(v, H)
+function compute_ab_terms(vin::Array{Float64,2}, H)
     #={{{=#
 
+    v = transpose(vin)
     sig = 0*v
     if ndims(v)>1
         n_roots = size(v,2)
@@ -79,7 +80,7 @@ function compute_ab_terms(v, H)
     ket_b_ca_lookup = ConfigStrings.fill_ca_lookup(ket_b)
 
     ConfigStrings.reset!(ket_b)
-
+                            
     for Kb in 1:ket_b.max
 
         ConfigStrings.reset!(ket_a)
@@ -93,22 +94,28 @@ function compute_ab_terms(v, H)
                     if La == 0
                         continue
                     end
-                    
+                  
+                    Lb = 1
+                    sign_b = 1
+                    L = 1 
                     for s in 1:ket_b.no
                         for q in 1:ket_b.no
                             sign_b, Lb = ket_b_ca_lookup[Kb][q+(s-1)*ket_b.no]
+                            
                             if Lb == 0
                                 continue
                             end
 
                             L = La + (Lb-1) * bra_a.max
 
+                            #sig[K,:] =  H.h2[p,r,q,s]
+                            #sig[K,:] += H.h2[p,r,q,s] * sign_a * sign_b * v[L,:]
+                            sig[:,K] += H.h2[p,r,q,s] * sign_a * sign_b * v[:,L]
 
-                            Iprqs = H.h2[p,r,q,s]
-
-                            for si in 1:n_roots
-                                sig[K,si] += Iprqs * sign_a * sign_b * v[L,si]
-                            end
+                            #for si in 1:n_roots
+                            #    sig[K,si] += Iprqs * sign_a * sign_b * v[L,si]
+                            #end
+                            continue
                         end
                     end
                 end
@@ -118,6 +125,7 @@ function compute_ab_terms(v, H)
         end
         ConfigStrings.incr!(ket_b)
     end
+    sig = transpose(sig)
     return sig 
 end
 #=}}}=#

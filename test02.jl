@@ -53,7 +53,7 @@ vin = Matrix(1.0I, state.dim, state.dim)
 #vin = reshape(vin, state.dima, state.dimb, size(vin,2))
 #println(size(vin))
 
-#Hmat = zeros(state.dima, state.dimb, state.dim)
+Hmat = zeros(state.dima, state.dimb, state.dim)
 #@tensor begin
 #    Hmat[a,c,d]  = Hdiag_a[a,b] * vin[b,c,d] 
 #    Hmat[a,c,d] += Hdiag_b[c,a] * vin[a,a,d] 
@@ -67,8 +67,11 @@ print(" Kron them")
 print(" done\n")
 
 print(" matvec\n")
+using Profile
+#@time CISolvers.matvec(vin , H)
 @time Hmat += CISolvers.matvec(vin , H)
 print(" done\n")
+Profile.print()                      # Prints results from Profile.print()
 
 @time e,v = eigs(Hmat, nev = 10, which=:SR)
 e = e .+ ecore
