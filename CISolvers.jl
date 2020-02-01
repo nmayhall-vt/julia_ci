@@ -154,37 +154,37 @@ function precompute_spin_diag_terms(H, e)
 
                 term = H.h1[q,p]
                 Hout[K,L] += term * bra.sign
-            
+            end
+        end
 
-                #  <pq|rs> p'q'sr -> (pr|qs) 
-                for r in 1:ket.no
-                    for s in r+1:ket.no
-                        for p in 1:ket.no
-                            for q in p+1:ket.no
 
-                                bra = deepcopy(ket)
+        #  <pq|rs> p'q'sr -> (pr|qs) 
+        for r in 1:ket.no
+            for s in r+1:ket.no
+                for p in 1:ket.no
+                    for q in p+1:ket.no
 
-                                ConfigStrings.apply_annihilation!(bra,r) 
-                                if bra.sign == 0
-                                    continue
-                                end
-                                ConfigStrings.apply_annihilation!(bra,s) 
-                                if bra.sign == 0
-                                    continue
-                                end
-                                ConfigStrings.apply_creation!(bra,q) 
-                                if bra.sign == 0
-                                    continue
-                                end
-                                ConfigStrings.apply_creation!(bra,p) 
-                                if bra.sign == 0
-                                    continue
-                                end
-                                L = ConfigStrings.calc_linear_index(bra)
-                                Ipqrs = H.h2[p,r,q,s]-H.h2[p,s,q,r]
-                                H[K,L] += Ipqrs*bra.sign
-                            end
+                        bra = deepcopy(ket)
+
+                        ConfigStrings.apply_annihilation!(bra,r) 
+                        if bra.sign == 0
+                            continue
                         end
+                        ConfigStrings.apply_annihilation!(bra,s) 
+                        if bra.sign == 0
+                            continue
+                        end
+                        ConfigStrings.apply_creation!(bra,q) 
+                        if bra.sign == 0
+                            continue
+                        end
+                        ConfigStrings.apply_creation!(bra,p) 
+                        if bra.sign == 0
+                            continue
+                        end
+                        L = ConfigStrings.calc_linear_index(bra)
+                        Ipqrs = H.h2[p,r,q,s]-H.h2[p,s,q,r]
+                        Hout[K,L] += Ipqrs*bra.sign
                     end
                 end
             end

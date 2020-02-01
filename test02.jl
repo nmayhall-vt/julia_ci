@@ -18,8 +18,8 @@ ints_2b = npzread("ints_2b.npy")
 
 
 n_orbs = size(ints_1b,1)
-n_elec_a = 1
-n_elec_b = 1 
+n_elec_a = 2
+n_elec_b = 2 
 print(" Number of Orbitals = ", size(ints_1b))
 print(size(ints_1b[1:n_elec_a,1:n_elec_a]))
 @printf("\n")
@@ -42,8 +42,10 @@ sig = CISolvers.compute_ab_terms(v,H)
 
 @printf(" ecore: %12.8f\n",ecore)
 
-Hdiag_a = CISolvers.precompute_spin_diag_terms(H,state.na)
-Hdiag_b = CISolvers.precompute_spin_diag_terms(H,state.nb)
+print(" Compute spin_diagonal terms\n")
+@time Hdiag_a = CISolvers.precompute_spin_diag_terms(H,state.na)
+@time Hdiag_b = CISolvers.precompute_spin_diag_terms(H,state.nb)
+print(" done\n")
 
 # v(I*J,s) -> v(I,J,s)
 vin = Matrix(1.0I, state.dim, state.dim)
@@ -59,11 +61,15 @@ vin = Matrix(1.0I, state.dim, state.dim)
 #vin  = reshape(vin, state.dima*state.dimb, size(vin,2))
 #Hmat = reshape(Hmat, state.dima*state.dimb, size(vin,2))
 
+print(" Kron them")
+@time Hmat  = kron(Hdiag_b, Matrix(1.0I, state.dima, state.dima))
+@time Hmat += kron(Matrix(1.0I, state.dimb, state.dimb), Hdiag_a)
+print(" done\n")
 
-Hmat  = kron(Hdiag_b, Matrix(1.0I, state.dima, state.dima))
-Hmat += kron(Matrix(1.0I, state.dimb, state.dimb), Hdiag_a)
+print(" matvec\n")
+@time Hmat += CISolvers.matvec(vin , H)
+print(" done\n")
 
-Hmat += CISolvers.matvec(vin , H)
 @time e,v = eigs(Hmat, nev = 10, which=:SR)
 e = e .+ ecore
 for ei in e
