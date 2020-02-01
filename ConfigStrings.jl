@@ -140,7 +140,7 @@ function fill_ca_lookup(c::ConfigString)
    
     tbl = []
     for K in 1:max
-        Kv::Array{Int,1} = []
+        Kv::Array{Tuple{Int,Int},1} = []
         for p in 1:ket.no
             for q in 1:ket.no
                 bra = deepcopy(ket)
@@ -153,13 +153,13 @@ function fill_ca_lookup(c::ConfigString)
                 #print(ket)
                 #print(bra)
                 if bra.sign == 0
-                    push!(Kv,0)
+                    push!(Kv,(1,0))
                     continue
                 else
                     #calc_max!(bra)
                     #print(bra)
                     calc_linear_index!(bra)
-                    push!(Kv,bra.sign * bra.lin_index)
+                    push!(Kv,(bra.sign , bra.lin_index))
                 end
             end
         end
@@ -173,7 +173,7 @@ end
 
 function reset!(c::ConfigString)
     #={{{=#
-    c.config = Vector(1:ne)
+    c.config = Vector(1:c.ne)
     c.sign = 1
     c.lin_index = 1
 end

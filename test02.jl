@@ -17,12 +17,27 @@ ints_2b = npzread("ints_2b.npy")
 
 
 n_orbs = size(ints_1b,1)
-n_elec_a = 7
-n_elec_b = 7 
+n_elec_a = 2
+n_elec_b = 2 
 print(" Number of Orbitals = ", size(ints_1b))
 print(size(ints_1b[1:n_elec_a,1:n_elec_a]))
 @printf("\n")
 
+H = CISolvers.Hamiltonian(h0=ecore, h1=ints_1b, h2=ints_2b,
+                              no=n_orbs, na=n_elec_a, nb=n_elec_b)
+#v = zeros(Real,10)
+#v[1] = 1
+#print(v)
+n_roots = 1
+v = zeros(H.dim,n_roots)
+for i in 1:n_roots
+    v[i,i] = 1
+end
+#normalize!(v)
+
+sig = zeros(H.dim, n_roots)
+v = CISolvers.compute_ab_terms!(v,sig,H)
+exit()
 ket_a = ConfigStrings.ConfigString(no=n_orbs, ne=n_elec_a)
 ConfigStrings.print(ket_a)
 
