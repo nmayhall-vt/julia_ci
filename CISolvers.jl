@@ -59,6 +59,7 @@ end
 ## }}}
 
 function compute_ab_terms!(v, sig, H)
+    #={{{=#
     @assert(ndims(v) == ndims(sig))
     n_roots = size(v,2) 
     #   Create local references to ci_strings
@@ -110,9 +111,9 @@ function compute_ab_terms!(v, sig, H)
         end
         ConfigStrings.incr!(ket_b)
     end
-
     return sig 
 end
+#=}}}=#
 
 function matvec(v, H=H)
     #=  
