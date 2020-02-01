@@ -126,6 +126,28 @@ end
 #=}}}=#
 
 
+function calc_linear_index(c::ConfigString)
+    #=
+    Return linear index for lexically ordered __config ConfigString
+    =#
+#={{{=#
+    v_prev::Int = 0 
+    lin_index = 1
+    for i in 1:c.ne 
+        v = c.config[i]
+        #todo: change mchn from function call to data lookup!
+        for j in v_prev+1:v-1
+            #print(c)
+            #print(c.no-j, " ", c.ne-i,'\n')
+            lin_index += Tools.calc_nchk(c.no-j,c.ne-i)
+        end
+        v_prev = v
+    end
+    return lin_index
+end
+#=}}}=#
+
+
 function fill_ca_lookup(c::ConfigString)
     #=
     Create an index table relating each ConfigString with all ia substitutions
@@ -215,7 +237,7 @@ function apply_annihilation!(c::ConfigString, orb_index::Int)
         return
     end
 
-    if found % 2 != 0
+    if found % 2 != 1
         c.sign *= -1
     end
 

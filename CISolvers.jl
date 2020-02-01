@@ -58,10 +58,17 @@ end
 end
 ## }}}
 
-function compute_ab_terms!(v, sig, H)
+function compute_ab_terms(v, H)
     #={{{=#
+
+    sig = 0*v
+    if ndims(v)>1
+        n_roots = size(v,2)
+    else
+        n_roots = 1
+    end
+    
     @assert(ndims(v) == ndims(sig))
-    n_roots = size(v,2) 
     #   Create local references to ci_strings
     ket_a = ConfigStrings.ConfigString(no=H.no, ne=H.na)
     ket_b = ConfigStrings.ConfigString(no=H.no, ne=H.nb)
@@ -115,7 +122,47 @@ function compute_ab_terms!(v, sig, H)
 end
 #=}}}=#
 
-function matvec(v, H=H)
+function precompute_spin_diag_terms(H, e)
+    #={{{=#
+
+    #   Create local references to ci_strings
+    ket = ConfigStrings.ConfigString(no=H.no, ne=e)
+    bra = ConfigStrings.ConfigString(no=H.no, ne=e)
+
+    ket_ca_lookup = ConfigStrings.fill_ca_lookup(ket)
+    
+    Hout = zeros(ket.max,ket.max)
+
+    ConfigStrings.reset!(ket)
+
+    for K in 1:ket.max
+
+        #  hpq p'q 
+        for p in 1:ket.no
+            for q in 1:ket.no
+                bra = deepcopy(ket)
+                ConfigStrings.apply_annihilation!(bra,q)
+                if bra.sign == 0
+                    continue
+                end
+                ConfigStrings.apply_creation!(bra,p)
+                if bra.sign == 0
+                    continue
+                end
+
+                L = ConfigStrings.calc_linear_index(bra)
+
+                term = H.h1[q,p]
+                Hout[K,L] += term * bra.sign
+            end
+        end
+        ConfigStrings.incr!(ket)
+    end
+    return Hout
+end
+#=}}}=#
+
+function matvec(v,H)
     #=  
     Function to compute the action of the Hamiltonian onto a vector
     =#
