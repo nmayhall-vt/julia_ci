@@ -58,18 +58,9 @@ end
 end
 ## }}}
 
-function compute_ab_terms(vin::Array{Float64,2}, H)
+function compute_ab_direct(H)
     #={{{=#
 
-    v = transpose(vin)
-    sig = 0*v
-    if ndims(v)>1
-        n_roots = size(v,2)
-    else
-        n_roots = 1
-    end
-    
-    @assert(ndims(v) == ndims(sig))
     #   Create local references to ci_strings
     ket_a = ConfigStrings.ConfigString(no=H.no, ne=H.na)
     ket_b = ConfigStrings.ConfigString(no=H.no, ne=H.nb)
@@ -80,7 +71,8 @@ function compute_ab_terms(vin::Array{Float64,2}, H)
     ket_b_ca_lookup = ConfigStrings.fill_ca_lookup(ket_b)
 
     ConfigStrings.reset!(ket_b)
-                            
+                           
+    Hout = zeros(ket_a.max*ket_b.max,ket_a.max*ket_b.max)
     for Kb in 1:ket_b.max
 
         ConfigStrings.reset!(ket_a)
@@ -109,8 +101,82 @@ function compute_ab_terms(vin::Array{Float64,2}, H)
                             L = La + (Lb-1) * bra_a.max
 
                             #sig[K,:] =  H.h2[p,r,q,s]
-                            #sig[K,:] += H.h2[p,r,q,s] * sign_a * sign_b * v[L,:]
+                            Hout[K,L] += H.h2[p,r,q,s] * sign_a * sign_b
+                            #scr = sig[:,K] + H.h2[p,r,q,s] * sign_a * sign_b * v[:,L]
+                            #sig[:,K] = scr 
+
+                            #for si in 1:n_roots
+                            #    sig[K,si] += Iprqs * sign_a * sign_b * v[L,si]
+                            #end
+                            continue
+                        end
+                    end
+                end
+            end
+            ConfigStrings.incr!(ket_a)
+
+        end
+        ConfigStrings.incr!(ket_b)
+    end
+    return Hout 
+end
+#=}}}=#
+
+function compute_ab_terms(vin::Array{Float64,2}, H)
+    #={{{=#
+
+    v = transpose(vin)
+    sig = 0*v
+    if ndims(v)>1
+        n_roots = size(v,2)
+    else
+        n_roots = 1
+    end
+    
+    @assert(ndims(v) == ndims(sig))
+    #   Create local references to ci_strings
+    ket_a = ConfigStrings.ConfigString(no=H.no, ne=H.na)
+    ket_b = ConfigStrings.ConfigString(no=H.no, ne=H.nb)
+    bra_a = ConfigStrings.ConfigString(no=H.no, ne=H.na)
+    bra_b = ConfigStrings.ConfigString(no=H.no, ne=H.nb)
+
+    ket_a_ca_lookup = ConfigStrings.fill_ca_lookup(ket_a)
+    ket_b_ca_lookup = ConfigStrings.fill_ca_lookup(ket_b)
+
+    ConfigStrings.reset!(ket_b)
+                           
+    scr = zeros(1,ket_a.max*ket_b.max)
+    for Kb in 1:ket_b.max
+
+        ConfigStrings.reset!(ket_a)
+        for Ka in 1:ket_a.max
+            K = Ka + (Kb-1) * ket_a.max
+
+            #  <pq|rs> p'q'sr  --> (pr|qs) (a,b)
+            for r in 1:ket_a.no
+                for p in 1:ket_a.no
+                    sign_a, La = ket_a_ca_lookup[Ka][p+(r-1)*ket_a.no]
+                    if La == 0
+                        continue
+                    end
+                  
+                    Lb = 1
+                    sign_b = 1
+                    L = 1 
+                    for s in 1:ket_b.no
+                        for q in 1:ket_b.no
+                            sign_b, Lb = ket_b_ca_lookup[Kb][q+(s-1)*ket_b.no]
+                            
+                            if Lb == 0
+                                continue
+                            end
+
+                            L = La + (Lb-1) * bra_a.max
+
+                            #sig[K,:] =  H.h2[p,r,q,s]
                             sig[:,K] += H.h2[p,r,q,s] * sign_a * sign_b * v[:,L]
+                            #scr = sig[:,K] + H.h2[p,r,q,s] * sign_a * sign_b * v[:,L]
+                            #sig[:,K] = scr 
 
                             #for si in 1:n_roots
                             #    sig[K,si] += Iprqs * sign_a * sign_b * v[L,si]
