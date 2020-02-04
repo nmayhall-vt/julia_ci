@@ -1,7 +1,9 @@
 push!(LOAD_PATH, "./")
 
 module FCI
+    
 
+using LinearAlgebra 
 using Printf
 using Parameters
 
@@ -37,48 +39,43 @@ end
         iteration::Int = 0
         algorithm::String = "direct"    #  options: direct/davidson
         n_roots::Int = 1
-        vec_curr::Array{Number,1} = []
 end
 
-#struct FCIMap
-#    #=
-#    This should probably be a subtype of LinearMaps
-#    =#
-#    A::Array{Float64,2} 
-#    ham::Hamiltonian
-#end
-#
-#Base.:*(H::FCIMap, v) = H.A * v
-#Base.:+(H::FCIMap, v) = H.A + v
-#Base.:-(H::FCIMap, v) = H.A - v
-#Base.:zero(H::FCIMap) = zero(H.A)
 
-#function compute_ab_terms(vin::Array{Float64,2}, H::Hamiltonian, P::Problem)
-function compute_ab_terms(vin, H::Hamiltonian, P::Problem)
+function compute_spin_diag_terms_full!(H::Hamiltonian, P::Problem, Hmat)
     #={{{=#
 
-    v = transpose(vin)
-    sig = 0*v
-    if ndims(v)>1
-        n_roots = size(v,2)
-    else
-        n_roots = 1
-    end
+    print(" Compute same spin terms.\n")
+    @assert(size(Hmat,1) == P.dim)
+    Hdiag_a = FCI.precompute_spin_diag_terms(H,P,P.na)
+    Hdiag_b = FCI.precompute_spin_diag_terms(H,P,P.nb)
+    Hmat .+= kron(Matrix(1.0I, P.dimb, P.dimb), Hdiag_a)
+    Hmat .+= kron(Hdiag_b, Matrix(1.0I, P.dima, P.dima))
     
-    @assert(size(vin,1) == P.dim)
+end
+#=}}}=#
 
+
+function compute_ab_terms_full!(H::Hamiltonian, P::Problem, Hmat)
+    #={{{=#
+
+    print(" Compute opposite spin terms.\n")
+    @assert(size(Hmat,1) == P.dim)
+    
+    #v = transpose(vin)
+    
     #   Create local references to ci_strings
     ket_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
     ket_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
     bra_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
     bra_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
 
-    ket_a_ca_lookup = ConfigStrings.fill_ca_lookup(ket_a)
-    ket_b_ca_lookup = ConfigStrings.fill_ca_lookup(ket_b)
-
+    
+    ket_a_lookup = ConfigStrings.fill_ca_lookup(ket_a)
+    ket_b_lookup = ConfigStrings.fill_ca_lookup(ket_b)
+    
     ConfigStrings.reset!(ket_b)
-                           
-    scr = zeros(1,ket_a.max*ket_b.max)
+                          
     for Kb in 1:ket_b.max
 
         ConfigStrings.reset!(ket_a)
@@ -88,7 +85,7 @@ function compute_ab_terms(vin, H::Hamiltonian, P::Problem)
             #  <pq|rs> p'q'sr  --> (pr|qs) (a,b)
             for r in 1:ket_a.no
                 for p in 1:ket_a.no
-                    sign_a, La = ket_a_ca_lookup[Ka][p+(r-1)*ket_a.no]
+                    sign_a, La = ket_a_lookup[Ka][p+(r-1)*ket_a.no]
                     if La == 0
                         continue
                     end
@@ -98,22 +95,79 @@ function compute_ab_terms(vin, H::Hamiltonian, P::Problem)
                     L = 1 
                     for s in 1:ket_b.no
                         for q in 1:ket_b.no
-                            sign_b, Lb = ket_b_ca_lookup[Kb][q+(s-1)*ket_b.no]
+                            sign_b, Lb = ket_b_lookup[Kb][q+(s-1)*ket_b.no]
                             
                             if Lb == 0
                                 continue
                             end
 
                             L = La + (Lb-1) * bra_a.max
+                            
+                            Hmat[K,L] += H.h2[p,r,q,s] * sign_a * sign_b
+                           
+                        end
+                    end
+                end
+            end
+            ConfigStrings.incr!(ket_a)
 
-                            #sig[K,:] =  H.h2[p,r,q,s]
-                            sig[:,K] += H.h2[p,r,q,s] * sign_a * sign_b * v[:,L]
-                            #scr = sig[:,K] + H.h2[p,r,q,s] * sign_a * sign_b * v[:,L]
-                            #sig[:,K] = scr 
+        end
+        ConfigStrings.incr!(ket_b)
+    end
+    return  
+end
+#=}}}=#
 
-                            #for si in 1:n_roots
-                            #    sig[K,si] += Iprqs * sign_a * sign_b * v[L,si]
-                            #end
+
+function compute_ab_terms_full(H::Hamiltonian, P::Problem)
+    #={{{=#
+
+    #print(" Compute opposite spin terms. Shape of v: ", size(v), "\n")
+    
+    #v = transpose(vin)
+    
+    Hmat = zeros(Float64, P.dim, P.dim)
+ 
+    #   Create local references to ci_strings
+    ket_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
+    ket_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
+    bra_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
+    bra_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
+
+    ket_a_lookup = ConfigStrings.fill_ca_lookup(ket_a)
+    ket_b_lookup = ConfigStrings.fill_ca_lookup(ket_b)
+    
+    a_max = bra_a.max
+    ConfigStrings.reset!(ket_b)
+                          
+    for Kb in 1:ket_b.max
+
+        ConfigStrings.reset!(ket_a)
+        for Ka in 1:ket_a.max
+            K = Ka + (Kb-1) * ket_a.max
+
+            #  <pq|rs> p'q'sr  --> (pr|qs) (a,b)
+            for r in 1:ket_a.no
+                for p in 1:ket_a.no
+                    sign_a, La = ket_a_lookup[Ka][p+(r-1)*ket_a.no]
+                    if La == 0
+                        continue
+                    end
+                  
+                    Lb = 1
+                    sign_b = 1
+                    L = 1 
+                    for s in 1:ket_b.no
+                        for q in 1:ket_b.no
+                            sign_b, Lb = ket_b_lookup[Kb][q+(s-1)*ket_b.no]
+                            
+                            if Lb == 0
+                                continue
+                            end
+
+                            L = La + (Lb-1) * a_max
+                           
+                            Hmat[K,L] += H.h2[p,r,q,s] * sign_a * sign_b
                             continue
                         end
                     end
@@ -124,10 +178,156 @@ function compute_ab_terms(vin, H::Hamiltonian, P::Problem)
         end
         ConfigStrings.incr!(ket_b)
     end
-    sig = transpose(sig)
+    #sig = transpose(sig)
+    return Hmat 
+end
+#=}}}=#
+
+
+function compute_ab_terms(v, H::Hamiltonian, P::Problem)
+    #={{{=#
+
+    #print(" Compute opposite spin terms. Shape of v: ", size(v), "\n")
+    @assert(size(v,1) == P.dim)
+    
+    #v = transpose(vin)
+    
+    sig = 0*v
+  
+
+    #   Create local references to ci_strings
+    ket_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
+    ket_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
+    bra_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
+    bra_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
+
+    ket_a_lookup = ConfigStrings.fill_ca_lookup(ket_a)
+    ket_b_lookup = ConfigStrings.fill_ca_lookup(ket_b)
+    
+    a_max = bra_a.max
+    ConfigStrings.reset!(ket_b)
+                          
+    n_roots = size(sig,2)
+    scr = zeros(1,ket_a.max*ket_b.max)
+    for Kb in 1:ket_b.max
+
+        ConfigStrings.reset!(ket_a)
+        for Ka in 1:ket_a.max
+            K = Ka + (Kb-1) * ket_a.max
+
+            #  <pq|rs> p'q'sr  --> (pr|qs) (a,b)
+            for r in 1:ket_a.no
+                for p in 1:ket_a.no
+                    sign_a, La = ket_a_lookup[Ka][p+(r-1)*ket_a.no]
+                    if La == 0
+                        continue
+                    end
+                  
+                    Lb = 1
+                    sign_b = 1
+                    L = 1 
+                    for s in 1:ket_b.no
+                        for q in 1:ket_b.no
+                            sign_b, Lb = ket_b_lookup[Kb][q+(s-1)*ket_b.no]
+                            
+                            if Lb == 0
+                                continue
+                            end
+
+                            L = La + (Lb-1) * a_max
+                           
+                            #sig[K,:] += H.h2[p,r,q,s] * v[L,:]
+                            #sig[K,:] += H.h2[p,r,q,s] * sign_a * sign_b * v[L,:]
+                            for si in 1:n_roots
+                                sig[K,si] += H.h2[p,r,q,s] * sign_a * sign_b * v[L,si]
+                                #@views sig[K,si] .+= H.h2[p,r,q,s] * sign_a * sign_b * v[L,si]
+                            end
+                            continue
+                        end
+                    end
+                end
+            end
+            ConfigStrings.incr!(ket_a)
+
+        end
+        ConfigStrings.incr!(ket_b)
+    end
+    #sig = transpose(sig)
     return sig 
 end
 #=}}}=#
+
+
+function compute_ab_terms(v, H::Hamiltonian, P::Problem, ket_a_lookup, ket_b_lookup)
+    #={{{=#
+
+    #print(" Compute opposite spin terms. Shape of v: ", size(v), "\n")
+    @assert(size(v,1) == P.dim)
+    
+    #v = transpose(vin)
+    
+    sig = 0*v
+  
+
+    #   Create local references to ci_strings
+    ket_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
+    ket_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
+    bra_a = ConfigStrings.ConfigString(no=P.no, ne=P.na)
+    bra_b = ConfigStrings.ConfigString(no=P.no, ne=P.nb)
+
+    a_max = bra_a.max
+    ConfigStrings.reset!(ket_b)
+                          
+    n_roots = size(sig,2)
+    scr = zeros(1,ket_a.max*ket_b.max)
+    for Kb in 1:ket_b.max
+
+        ConfigStrings.reset!(ket_a)
+        for Ka in 1:ket_a.max
+            K = Ka + (Kb-1) * ket_a.max
+
+            #  <pq|rs> p'q'sr  --> (pr|qs) (a,b)
+            for r in 1:ket_a.no
+                for p in 1:ket_a.no
+                    sign_a, La = ket_a_lookup[Ka][p+(r-1)*ket_a.no]
+                    if La == 0
+                        continue
+                    end
+                  
+                    Lb = 1
+                    sign_b = 1
+                    L = 1 
+                    for s in 1:ket_b.no
+                        for q in 1:ket_b.no
+                            sign_b, Lb = ket_b_lookup[Kb][q+(s-1)*ket_b.no]
+                            
+                            if Lb == 0
+                                continue
+                            end
+
+                            L = La + (Lb-1) * a_max
+                           
+                            #sig[K,:] += H.h2[p,r,q,s] * v[L,:]
+                            #sig[K,:] += H.h2[p,r,q,s] * sign_a * sign_b * v[L,:]
+                            for si in 1:n_roots
+                                sig[K,si] += H.h2[p,r,q,s] * sign_a * sign_b * v[L,si]
+                                #@views sig[K,si] .+= H.h2[p,r,q,s] * sign_a * sign_b * v[L,si]
+                            end
+                            continue
+                        end
+                    end
+                end
+            end
+            ConfigStrings.incr!(ket_a)
+
+        end
+        ConfigStrings.incr!(ket_b)
+    end
+    #sig = transpose(sig)
+    return sig 
+end
+#=}}}=#
+
 
 function precompute_spin_diag_terms(H::Hamiltonian, P::Problem, e)
     #={{{=#
@@ -203,16 +403,47 @@ end
 #=}}}=#
 
 
+function get_matvec_fn(ham::Hamiltonian, prb::Problem, HdiagA, HdiagB)
+    #=
+    Get function with takes a vector and returns action of H on that vector
+    =#
+#={{{=#
+    ket_a = ConfigStrings.ConfigString(no=prb.no, ne=prb.na)
+    ket_b = ConfigStrings.ConfigString(no=prb.no, ne=prb.nb)
+    
+    lookup_a = ConfigStrings.fill_ca_lookup(ket_a)
+    lookup_b = ConfigStrings.fill_ca_lookup(ket_b)
 
-function get_Map(ham::Hamiltonian, prb::Problem, HdiagA, HdiagB)
+    function (v)
+        @time sig = compute_ab_terms(v, ham, prb, lookup_a, lookup_b)
+        sig += HdiagA * v
+        sig += HdiagB * v
+        return sig 
+    end
+end
+#=}}}=#
+
+
+function get_map(ham::Hamiltonian, prb::Problem, HdiagA, HdiagB)
+    #=
+    Get LinearMap with takes a vector and returns action of H on that vector
+    =#
+    #={{{=#
+    ket_a = ConfigStrings.ConfigString(no=prb.no, ne=prb.na)
+    ket_b = ConfigStrings.ConfigString(no=prb.no, ne=prb.nb)
+    
+    lookup_a = ConfigStrings.fill_ca_lookup(ket_a)
+    lookup_b = ConfigStrings.fill_ca_lookup(ket_b)
+
     function mymatvec(v)
-        @time sig = compute_ab_terms(v,ham,prb)
+        sig = compute_ab_terms(v, ham, prb)
+        #sig = compute_ab_terms(v, ham, prb, lookup_a, lookup_b)
         sig += HdiagA * v
         sig += HdiagB * v
         return sig 
     end
     return LinearMap{Float64}(mymatvec, prb.dim; issymmetric=true, ismutating=false, ishermitian=true)
 end
-
+#=}}}=#
 
 end

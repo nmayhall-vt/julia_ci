@@ -18,8 +18,8 @@ ints_2b = npzread("ints_2b.npy")
 
 
 n_orbs = size(ints_1b,1)
-n_elec_a = 3
-n_elec_b = 3 
+n_elec_a = 2
+n_elec_b = 2 
 print(" Number of Orbitals = ", size(ints_1b))
 print(size(ints_1b[1:n_elec_a,1:n_elec_a]))
 @printf("\n")
