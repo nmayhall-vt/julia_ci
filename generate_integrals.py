@@ -36,7 +36,7 @@ test = True
 if test:
     pyscf.lib.num_threads(1)
     mol = gto.M(verbose=3)
-    mol.nelectron = 6 
+    mol.nelectron = 4 
     mol.incore_anyway = True
     cisolver = fci.direct_spin1.FCI(mol)
     #e, ci = cisolver.kernel(h1, eri, h1.shape[1], 2, ecore=mol.energy_nuc())
