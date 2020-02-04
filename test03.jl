@@ -1,8 +1,6 @@
 push!(LOAD_PATH, "./")
-import ConfigStrings
-import CISolvers
 import Tools
-
+import ConfigStrings
 using FCI 
 
 using LinearAlgebra 
@@ -19,16 +17,15 @@ using LinearMaps
 #using IterativeSolvers, LinearMaps, Preconditioners
 #using IterativeSolvers
 
-ecore = npzread("ints_0b.npy")
-ints_1b = npzread("ints_1b.npy")
-ints_2b = npzread("ints_2b.npy")
+ecore = npzread("data/ints_0b.npy")
+ints_1b = npzread("data/ints_1b.npy")
+ints_2b = npzread("data/ints_2b.npy")
 
-n_elec_a = 4
-n_elec_b = 4
+n_elec_a = 2
+n_elec_b = 2
 
 n_orbs = size(ints_1b,1)
 print(" Number of Orbitals = ", size(ints_1b))
-print(size(ints_1b[1:n_elec_a,1:n_elec_a]))
 @printf("\n")
 
 
@@ -45,7 +42,7 @@ problem = FCI.Problem(no=size(ints_1b,1), na=n_elec_a, nb=n_elec_b)
 #A = get_rand_mat(problem.dim)
 
 #H = FCIMap(A)
-
+print(problem)
 v = Matrix(1.0I, problem.dim, problem.dim)
 
 
@@ -77,10 +74,10 @@ Hmap = FCI.get_map(ham, problem, Hdiag_a, Hdiag_b)
 #Hmat += Hmap*v
 
 #Hmat = .5*(Hmat + transpose(Hmat))
-@time e,v = eigs(Hmat, v0=v[:,1], nev = 1, which=:SR)
+@time e,v = eigs(Hmat, v0=v[:,1], nev = 10, which=:SR)
 e = real(e)
 for ei in e
-    @printf(" %12.8f  %12.8f\n",ei,ei+ham.h0)
+    @printf(" Energy: %12.8f\n",ei+ham.h0)
 end
 
 exit()
